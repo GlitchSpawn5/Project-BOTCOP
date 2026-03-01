@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    ports:
+      - "8000:8000"
+    environment:
+      - POSTGRES_SERVER=db
+      - NEO4J_URI=bolt://neo4j:7687
+    depends_on:
+      - db
+      - neo4j
+    networks:
+      - botcop_network
+
+  ml_inference:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend # Reusing base for simplicity, CMD overridden
+    command: python ml_pipeline/inference_server/main.py
+    ports:
+      - "8001:8001"
+    networks:
+      - botcop_network
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: botcop
+    networks:
+      - botcop_network
+
+  neo4j:
+    image: neo4j:5.16.0
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      NEO4J_AUTH: neo4j/password
+    networks:
+      - botcop_network
+
+  frontend:
+    image: nginx:alpine
+    volumes:
+      - ./frontend:/usr/share/nginx/html
+    ports:
+      - "3000:80"
+    networks:
+      - botcop_network
+
+networks:
+  botcop_network:
+    driver: bridge

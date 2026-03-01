@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: botcop-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: botcop-backend
+  template:
+    metadata:
+      labels:
+        app: botcop-backend
+    spec:
+      containers:
+      - name: backend
+        image: gcr.io/botcop-prod/backend:latest
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: botcop-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: botcop-ml-inference
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: botcop-ml-inference
+  template:
+    metadata:
+      labels:
+        app: botcop-ml-inference
+    spec:
+      containers:
+      - name: inference
+        image: gcr.io/botcop-prod/ml-inference:latest
+        ports:
+        - containerPort: 8001
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: botcop-backend-svc
+spec:
+  selector:
+    app: botcop-backend
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8000
+  type: LoadBalancer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: botcop-db-neo4j
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: neo4j
+  template:
+    metadata:
+      labels:
+        app: neo4j
+    spec:
+      containers:
+      - name: neo4j
+        image: neo4j:5.16.0
+        ports:
+        - containerPort: 7474
+        - containerPort: 7687
+        env:
+        - name: NEO4J_AUTH
+          value: "neo4j/password"
